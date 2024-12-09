@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package common;
+
+// Request dan Response untuk transaksi baru
+message TransactionRequest {
+  int32 id_barang = 1;
+  int32 jumlah = 2;
+}
+
+message TransactionResponse {
+  bool success = 1;
+  string message = 2;
+  int32 total_harga = 3;
+  int32 diskon = 4;
+}
+
+// Request dan Response untuk pembaruan stok
+message StokUpdateRequest {
+  int32 id_barang = 1;
+  int32 jumlah_terjual = 2;
+}
+
+message StokUpdateResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request dan Response untuk laporan penjualan
+message LaporanRequest {
+  string periode = 1; // Harian atau Mingguan
+}
+
+message LaporanResponse {
+  repeated string laporan = 1;
+}
+
+// Request dan Response untuk penambahan stok
+message AddStokRequest {
+  int32 id_barang = 1;
+  int32 jumlah_tambah = 2;
+}
+
+message AddStokResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Definisi layanan gRPC
+service Backend {
+  rpc ProsesTransaksi(TransactionRequest) returns (TransactionResponse);
+  rpc KirimKeStok(StokUpdateRequest) returns (StokUpdateResponse);
+  rpc AmbilLaporan(LaporanRequest) returns (LaporanResponse);
+}
+
+service StokBarang {
+  rpc UpdateStok(StokUpdateRequest) returns (StokUpdateResponse);
+  rpc AddStok(AddStokRequest) returns (AddStokResponse); // RPC baru untuk penambahan stok
+}

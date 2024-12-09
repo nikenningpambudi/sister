@@ -1,0 +1,94 @@
+from flask import Flask, render_template, request
+import mysql.connector  # Library untuk koneksi ke MySQL
+import grpc
+import common_pb2
+import common_pb2_grpc
+
+app = Flask(__name__)
+
+# Konfigurasi koneksi ke database MySQL
+db_config = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': '',  # Ganti dengan password MySQL Anda
+    'database': 'kasir_terdistribusi'
+}
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    # Ambil data dari database untuk ditampilkan di tabel
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id_barang, nama_barang, stok, harga FROM barang")
+    data_barang = cursor.fetchall()
+    conn.close()
+
+    if request.method == 'POST':
+        id_barang = int(request.form['id_barang'])
+        jumlah = int(request.form['jumlah'])
+
+        # Koneksi ke server gRPC (Backend)
+        with grpc.insecure_channel("localhost:50051") as channel:
+            stub = common_pb2_grpc.BackendStub(channel)
+            transaksi = common_pb2.TransactionRequest(id_barang=id_barang, jumlah=jumlah)
+            response = stub.ProsesTransaksi(transaksi)
+
+        # Menampilkan hasil transaksi
+        return render_template(
+            'result.html', 
+            message=response.message, 
+            total_harga=response.total_harga, 
+            diskon=response.diskon,
+            id_barang=response.id_barang  # Pastikan id_barang juga dikirimkan
+        )
+
+    # Kirim data_barang ke template index.html
+    return render_template('index.html', data_barang=data_barang)
+
+if __name__ == "__main__":
+    app.run(host="localhost", port=5000, debug=True)
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Form dan Daftar Barang</title>
+</head>
+<body>
+    <h1>Form Transaksi</h1>
+    <form method="post">
+        <label for="id_barang">ID Barang:</label>
+        <input type="text" id="id_barang" name="id_barang" required><br><br>
+    
+        <label for="jumlah">Jumlah:</label>
+        <input type="text" id="jumlah" name="jumlah" required><br><br>
+        <input type="submit" value="Proses Transaksi">
+    </form>
+
+    <h1>Daftar Barang</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID Barang</th>
+                <th>Nama Barang</th>
+                <th>Stok</th>
+                <th>Harga</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for barang in data_barang %}
+            <tr>
+                <td>{{ barang[0] }}</td>
+                <td>{{ barang[1] }}</td>
+                <td>{{ barang[2] }}</td>
+                <td>{{ barang[3] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+
